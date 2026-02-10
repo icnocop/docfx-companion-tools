@@ -48,6 +48,7 @@ Options:
   -c, --check                             Check missing files in structure only. [default: False]
   -f, --sourcefile <sourcefile>           The source file path for line range translation.
   -r, --lines <lines>                     The range of lines to translate (e.g., '1-10'). Requires --sourcefile.
+  -i, --insert                            Insert translated lines instead of replacing. Requires --lines. [default: False]
   --version                               Show version information
   -?, -h, --help                          Show help and usage information
 ```
@@ -180,6 +181,27 @@ This command will:
 * If a target file doesn't exist, a warning will be displayed and that language will be skipped
 * Use the `--check` option with `--lines` to verify that target files exist without translating
 * When using `--check` with `--lines`, verbose output (`-v`) will display which files would be translated and show the specific lines that would be translated
+
+### Inserting lines instead of replacing
+
+By default, `--lines` **replaces** the corresponding lines in each target file. If you have added new lines to the source file and want to **insert** the translated text into the target files at the same position (without overwriting existing lines), use the `--insert` (or `-i`) flag.
+
+**Example:**
+
+```bash
+DocLanguageTranslator -d c:\path\userdocs -k your-key -f c:\path\userdocs\en\toc.yml -r 5-7 --insert
+```
+
+This command will:
+
+1. Read lines 5-7 from `c:\path\userdocs\en\toc.yml`
+2. Translate those lines to all other language directories (e.g., `de`, `fr`, `zh-Hans`)
+3. Insert the translated lines before line 5 in each target file, preserving all existing content
+
+| Flag | Behavior |
+|---|---|
+| `--lines 5-7` (default) | Replaces lines 5–7 in each target file with translated content |
+| `--lines 5-7 --insert` | Inserts translated content before line 5 in each target file, keeping all existing lines |
 
 **Check-only mode example:**
 
