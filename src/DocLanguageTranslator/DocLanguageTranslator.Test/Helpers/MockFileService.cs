@@ -81,4 +81,12 @@ public class MockFileService : IFileService
         allLines.InsertRange(start, newLines);
         WriteAllText(filePath, string.Join("\n", allLines));
     }
+
+    public void InsertLines(string filePath, int insertBeforeLine, string[] newLines)
+    {
+        var allLines = ReadAllLines(filePath).ToList();
+        int index = Math.Clamp(insertBeforeLine - 1, 0, allLines.Count);
+        allLines.InsertRange(index, newLines);
+        WriteAllText(filePath, string.Join("\n", allLines));
+    }
 }

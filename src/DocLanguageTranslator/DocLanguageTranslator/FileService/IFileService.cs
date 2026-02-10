@@ -84,4 +84,12 @@ internal interface IFileService
     /// <param name="endLine">The 1-based ending line number to replace (inclusive).</param>
     /// <param name="newLines">The new lines to insert in place of the original range.</param>
     void ReplaceLines(string filePath, int startLine, int endLine, string[] newLines);
+
+    /// <summary>
+    /// Inserts lines into a file at the specified position without removing existing lines.
+    /// </summary>
+    /// <param name="filePath">The path to the file to modify.</param>
+    /// <param name="insertBeforeLine">The 1-based line number before which the new lines will be inserted.</param>
+    /// <param name="newLines">The new lines to insert.</param>
+    void InsertLines(string filePath, int insertBeforeLine, string[] newLines);
 }
