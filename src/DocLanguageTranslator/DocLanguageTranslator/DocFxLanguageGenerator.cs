@@ -63,6 +63,7 @@ namespace DocFXLanguageGenerator
             messageHelper.Verbose($"Source language     : {options.SourceLanguage}");
             messageHelper.Verbose($"Source file         : {options.SourceFile}");
             messageHelper.Verbose($"Line range          : {options.LineRange}");
+            messageHelper.Verbose($"Insert lines        : {options.InsertLines}");
 
             if (string.IsNullOrEmpty(subscriptionKey) && !options.CheckOnly)
             {
@@ -421,7 +422,11 @@ namespace DocFXLanguageGenerator
             }
 
             string sourceLang = GetLanguageCodeFromPath(sourceDir);
-            var lineRangeMode = new LineRangeTranslationMode(startLine, endLine);
+
+            ITranslationMode translationMode = options.InsertLines
+                ? new LineInsertTranslationMode(startLine, endLine)
+                : new LineRangeTranslationMode(startLine, endLine);
+
             int numberOfFiles = 0;
 
             foreach (var langDir in allLanguagesDirectories)
@@ -467,7 +472,8 @@ namespace DocFXLanguageGenerator
                 if (options.CheckOnly)
                 {
                     // Show what would be translated
-                    messageHelper.Verbose($"Would translate lines {startLine}-{endLine} from '{options.SourceFile}' to '{targetFile}' [{sourceLang} to {targetLang}]");
+                    string action = options.InsertLines ? "insert" : "replace";
+                    messageHelper.Verbose($"Would translate and {action} lines {startLine}-{endLine} from '{options.SourceFile}' to '{targetFile}' [{sourceLang} to {targetLang}]");
                     string[] sourceLines = fileService.ReadLines(options.SourceFile, startLine, endLine);
                     for (int i = 0; i < sourceLines.Length; i++)
                     {
@@ -476,7 +482,7 @@ namespace DocFXLanguageGenerator
 
                     numberOfFiles++;
                 }
-                else if (TranslateFile(options.SourceFile, sourceLang, targetFile, targetLang, lineRangeMode))
+                else if (TranslateFile(options.SourceFile, sourceLang, targetFile, targetLang, translationMode))
                 {
                     numberOfFiles++;
                 }

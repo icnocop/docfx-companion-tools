@@ -70,4 +70,13 @@ internal class FileService : IFileService
         allLines.InsertRange(start, newLines);
         File.WriteAllLines(filePath, allLines);
     }
+
+    /// <inheritdoc/>
+    public void InsertLines(string filePath, int insertBeforeLine, string[] newLines)
+    {
+        var allLines = File.ReadAllLines(filePath).ToList();
+        int index = Math.Clamp(insertBeforeLine - 1, 0, allLines.Count);
+        allLines.InsertRange(index, newLines);
+        File.WriteAllLines(filePath, allLines);
+    }
 }

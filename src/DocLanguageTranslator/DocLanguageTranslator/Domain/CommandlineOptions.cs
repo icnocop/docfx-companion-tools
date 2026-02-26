@@ -47,5 +47,11 @@ namespace DocFXLanguageGenerator.Domain
         /// Gets or sets the line range to translate (e.g., "1-10" or "5-20").
         /// </summary>
         public string LineRange { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether translated lines should be inserted
+        /// at the specified position instead of replacing existing lines in the target file.
+        /// </summary>
+        public bool InsertLines { get; set; }
     }
 }

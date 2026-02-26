@@ -57,6 +57,11 @@ namespace DocFXLanguageGenerator
                 aliases: ["--lines", "-r"],
                 description: "The range of lines to translate (e.g., '1-10' or '5-20'). Requires --sourcefile.");
 
+            var insertLinesOption = new Option<bool>(
+                aliases: ["--insert", "-i"],
+                description: "Insert translated lines at the specified position instead of replacing existing lines. Requires --lines.",
+                getDefaultValue: () => false);
+
             // Add options to root command
             rootCommand.AddOption(docFolderOption);
             rootCommand.AddOption(verboseOption);
@@ -66,6 +71,7 @@ namespace DocFXLanguageGenerator
             rootCommand.AddOption(checkOnlyOption);
             rootCommand.AddOption(sourceFileOption);
             rootCommand.AddOption(lineRangeOption);
+            rootCommand.AddOption(insertLinesOption);
 
             // Set command handler
             rootCommand.SetHandler(context =>
@@ -80,6 +86,7 @@ namespace DocFXLanguageGenerator
                     CheckOnly = context.ParseResult.GetValueForOption(checkOnlyOption),
                     SourceFile = context.ParseResult.GetValueForOption(sourceFileOption),
                     LineRange = context.ParseResult.GetValueForOption(lineRangeOption),
+                    InsertLines = context.ParseResult.GetValueForOption(insertLinesOption),
                 };
 
                 context.ExitCode = RunLogic(options);

@@ -474,7 +474,7 @@ public sealed class DocFxLanguageGeneratorTests
         mockTranslationService.Verify(t => t.TranslateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
 
         // Verify output shows which files would be translated
-        Assert.Contains(mockMessageHelper.VerboseMessages, m => m.Contains("Would translate lines 2-3 from 'docs/en/file1.md' to 'docs/fr/file1.md'"));
+        Assert.Contains(mockMessageHelper.VerboseMessages, m => m.Contains("Would translate and replace lines 2-3 from 'docs/en/file1.md' to 'docs/fr/file1.md'"));
 
         // Verify output shows the lines that would be translated
         Assert.Contains(mockMessageHelper.VerboseMessages, m => m.Contains("Line 2: Line 2 to translate"));
@@ -691,5 +691,182 @@ public sealed class DocFxLanguageGeneratorTests
         mockTranslationService.Verify(
             t => t.TranslateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
             Times.Never);
+    }
+
+    [Fact]
+    public void LineRange_WithInsert_InsertsTranslatedLinesWithoutReplacingExisting()
+    {
+        // Arrange
+        mockFileService.CreateDirectory("docs");
+        mockFileService.CreateDirectory("docs/en");
+        mockFileService.CreateDirectory("docs/fr");
+        mockFileService.WriteAllText("docs/en/toc.yml", "- name: Home\n- name: New Entry\n- name: About");
+        mockFileService.WriteAllText("docs/fr/toc.yml", "- name: Accueil\n- name: A propos");
+
+        CommandlineOptions options = new CommandlineOptions
+        {
+            DocFolder = "docs",
+            Key = "valid-key",
+            SourceFile = "docs/en/toc.yml",
+            LineRange = "2-2",
+            InsertLines = true,
+            Verbose = true,
+        };
+
+        mockTranslationService
+            .Setup(t => t.TranslateAsync(It.IsAny<string>(), "en", "fr"))
+            .ReturnsAsync((string text, string _, string _) =>
+                text.Replace("New Entry", "Nouvelle entrée"));
+
+        DocFxLanguageGenerator generator = new DocFxLanguageGenerator(
+            options,
+            mockFileService,
+            mockTranslationService.Object,
+            mockMessageHelper);
+
+        // Act
+        int returnValue = generator.Run();
+
+        // Assert
+        Assert.Equal(0, returnValue);
+        string resultContent = mockFileService.Files["docs/fr/toc.yml"];
+
+        // Original lines should still be present
+        Assert.Contains("Accueil", resultContent);
+        Assert.Contains("A propos", resultContent);
+
+        // Translated line should be inserted
+        Assert.Contains("Nouvelle entrée", resultContent);
+
+        // Target file should now have 3 lines (1 original + 1 inserted + 1 original)
+        string[] lines = resultContent.Split('\n');
+        Assert.Equal(3, lines.Length);
+    }
+
+    [Fact]
+    public void LineRange_WithInsert_InsertsMultipleLinesAtCorrectPosition()
+    {
+        // Arrange
+        mockFileService.CreateDirectory("docs");
+        mockFileService.CreateDirectory("docs/en");
+        mockFileService.CreateDirectory("docs/fr");
+        mockFileService.WriteAllText("docs/en/file1.md", "# Title\nNew line 1\nNew line 2\nExisting line");
+        mockFileService.WriteAllText("docs/fr/file1.md", "# Titre\nLigne existante");
+
+        CommandlineOptions options = new CommandlineOptions
+        {
+            DocFolder = "docs",
+            Key = "valid-key",
+            SourceFile = "docs/en/file1.md",
+            LineRange = "2-3",
+            InsertLines = true,
+            Verbose = true,
+        };
+
+        mockTranslationService
+            .Setup(t => t.TranslateAsync(It.IsAny<string>(), "en", "fr"))
+            .ReturnsAsync((string text, string _, string _) =>
+                text.Replace("New line", "Nouvelle ligne"));
+
+        DocFxLanguageGenerator generator = new DocFxLanguageGenerator(
+            options,
+            mockFileService,
+            mockTranslationService.Object,
+            mockMessageHelper);
+
+        // Act
+        int returnValue = generator.Run();
+
+        // Assert
+        Assert.Equal(0, returnValue);
+        string resultContent = mockFileService.Files["docs/fr/file1.md"];
+        string[] lines = resultContent.Split('\n');
+
+        // Should have 4 lines: original line 1, 2 inserted lines, original line 2
+        Assert.Equal(4, lines.Length);
+        Assert.Equal("# Titre", lines[0]);
+        Assert.Contains("Nouvelle ligne 1", lines[1]);
+        Assert.Contains("Nouvelle ligne 2", lines[2]);
+        Assert.Equal("Ligne existante", lines[3]);
+    }
+
+    [Fact]
+    public void LineRange_WithoutInsert_ReplacesLinesInTarget()
+    {
+        // Arrange - verify default replace behavior is unchanged
+        mockFileService.CreateDirectory("docs");
+        mockFileService.CreateDirectory("docs/en");
+        mockFileService.CreateDirectory("docs/fr");
+        mockFileService.WriteAllText("docs/en/toc.yml", "- name: Home\n- name: Updated Entry\n- name: About");
+        mockFileService.WriteAllText("docs/fr/toc.yml", "- name: Accueil\n- name: Ancienne entrée\n- name: A propos");
+
+        CommandlineOptions options = new CommandlineOptions
+        {
+            DocFolder = "docs",
+            Key = "valid-key",
+            SourceFile = "docs/en/toc.yml",
+            LineRange = "2-2",
+            InsertLines = false,
+            Verbose = true,
+        };
+
+        mockTranslationService
+            .Setup(t => t.TranslateAsync(It.IsAny<string>(), "en", "fr"))
+            .ReturnsAsync((string text, string _, string _) =>
+                text.Replace("Updated Entry", "Entrée mise à jour"));
+
+        DocFxLanguageGenerator generator = new DocFxLanguageGenerator(
+            options,
+            mockFileService,
+            mockTranslationService.Object,
+            mockMessageHelper);
+
+        // Act
+        int returnValue = generator.Run();
+
+        // Assert
+        Assert.Equal(0, returnValue);
+        string resultContent = mockFileService.Files["docs/fr/toc.yml"];
+        string[] lines = resultContent.Split('\n');
+
+        // Should still have 3 lines (replaced, not inserted)
+        Assert.Equal(3, lines.Length);
+        Assert.Contains("Entrée mise à jour", resultContent);
+        Assert.DoesNotContain("Ancienne entrée", resultContent);
+    }
+
+    [Fact]
+    public void LineRange_WithInsertAndCheckOnly_ShowsInsertAction()
+    {
+        // Arrange
+        mockFileService.CreateDirectory("docs");
+        mockFileService.CreateDirectory("docs/en");
+        mockFileService.CreateDirectory("docs/fr");
+        mockFileService.WriteAllText("docs/en/file1.md", "# Title\nNew line\nExisting");
+        mockFileService.WriteAllText("docs/fr/file1.md", "# Titre\nExistant");
+
+        CommandlineOptions options = new CommandlineOptions
+        {
+            DocFolder = "docs",
+            SourceFile = "docs/en/file1.md",
+            LineRange = "2-2",
+            InsertLines = true,
+            CheckOnly = true,
+            Verbose = true,
+        };
+
+        DocFxLanguageGenerator generator = new DocFxLanguageGenerator(
+            options,
+            mockFileService,
+            mockTranslationService.Object,
+            mockMessageHelper);
+
+        // Act
+        int returnValue = generator.Run();
+
+        // Assert
+        Assert.Equal(0, returnValue);
+        Assert.Contains(mockMessageHelper.VerboseMessages, m => m.Contains("Would translate and insert lines 2-2"));
+        mockTranslationService.Verify(t => t.TranslateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 }
